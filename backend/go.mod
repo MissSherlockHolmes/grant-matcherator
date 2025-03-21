@@ -1,4 +1,4 @@
-module matchme
+module matchme/backend
 
 go 1.22.0
 
@@ -13,4 +13,6 @@ require (
 	golang.org/x/crypto v0.32.0
 )
 
-require golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+require golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+
+require github.com/brianvoe/gofakeit/v6 v6.28.0 // indirect

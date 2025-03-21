@@ -4,58 +4,34 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var firstNames = []string{
-	"Alice", "Bob", "Charlie", "Diana", "Erik",
-	"Fiona", "George", "Hannah", "Ian", "Julia",
-	"Riona", "Reorge", "Rannah", "Ran", "Rulia",
-	"Tiona", "Teorge", "Tannah", "Tan", "Tulia",
-	"Siona", "Jeorge", "Sannah", "Jan", "Sulia",
+// Predefined arrays for consistent test data
+var sectors = []string{
+	"Education", "Healthcare", "Environment", "Arts & Culture",
+	"Social Services", "Technology", "Economic Development",
+	"Youth Development", "Community Development", "Research",
 }
 
-var lastNames = []string{
-	"Smith", "Johnson", "Williams", "Brown", "Jones",
-	"Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+var targetGroups = []string{
+	"Children", "Youth", "Elderly", "Veterans", "Immigrants",
+	"Low-income", "Disabilities", "Women", "Minorities",
+	"LGBTQ+", "Students", "Unemployed",
 }
 
-var bios = []string{
-	"Love to travel and explore new places!",
-	"Coffee enthusiast and book lover",
-	"Passionate about photography and nature",
-	"Tech geek who loves coding",
-	"Fitness fanatic and outdoor adventurer",
-}
-
-var interests = [][]string{
-	{"Reading", "Travel", "Photography"},
-	{"Gaming", "Technology", "Movies"},
-	{"Sports", "Fitness", "Outdoors"},
-	{"Cooking", "Music", "Art"},
-	{"Dancing", "Writing", "Fashion"},
-}
-
-var locations = []string{
-	"Tallinn", "Tartu", "Pärnu", "Narva", "Viljandi", "Kohtla-Järve",
-	"Paide", "Rakvere", "Sillamäe", "Maardu", "Paide", "Valga", "Võru",
-	"Kuressaare", "Jõhvi",
-}
-
-var lookingFor = []string{
-	"Friendship", "Relationship", "Casual Dating",
-	"Networking", "Chat Buddies", "Activity Partners",
-}
-
-var occupations = []string{
-	"Software Developer", "Teacher", "Healthcare Professional",
-	"Business Professional", "Student", "Artist/Creative",
+var states = []string{
+	"AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+	"HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+	"MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+	"NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+	"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 }
 
 func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
@@ -84,54 +60,105 @@ func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
 		createdUsers := 0
 		for i := 0; i < count; i++ {
 			// Generate random user data
-			firstName := firstNames[rand.Intn(len(firstNames))]
-			lastName := lastNames[rand.Intn(len(lastNames))]
-			email := fmt.Sprintf("%s.%s.%d@test.com", firstName, lastName, time.Now().UnixNano())
+			email := gofakeit.Email()
+			organizationName := gofakeit.Company()
 
 			// Hash a simple password
 			hashedPassword, err := bcrypt.GenerateFromPassword([]byte("testpass123"), bcrypt.DefaultCost)
 			if err != nil {
-				//log.printf("Error hashing password: %v", err)
 				continue
+			}
+
+			// Randomly assign role (provider or recipient)
+			role := "recipient"
+			if gofakeit.Bool() {
+				role = "provider"
 			}
 
 			// Insert user
 			var userID int
 			err = tx.QueryRow(`
-				INSERT INTO users (email, password_hash)
-				VALUES ($1, $2)
+				INSERT INTO users (email, password_hash, role)
+				VALUES ($1, $2, $3)
 				RETURNING id
-			`, email, string(hashedPassword)).Scan(&userID)
-			//log.printf("Test user: %d created", userID)
+			`, email, string(hashedPassword), role).Scan(&userID)
 			if err != nil {
-				//log.printf("Error creating test user: %v", err)
 				continue
 			}
 
-			// Convert interests slice to PostgreSQL array
-			selectedInterests := interests[rand.Intn(len(interests))]
-			interestsArray := pq.Array(selectedInterests)
+			// Generate random sectors and target groups
+			numSectors := gofakeit.Number(1, 3)
+			numTargetGroups := gofakeit.Number(1, 3)
+			selectedSectors := make([]string, numSectors)
+			selectedTargetGroups := make([]string, numTargetGroups)
+
+			for j := 0; j < numSectors; j++ {
+				selectedSectors[j] = sectors[gofakeit.Number(0, len(sectors)-1)]
+			}
+			for j := 0; j < numTargetGroups; j++ {
+				selectedTargetGroups[j] = targetGroups[gofakeit.Number(0, len(targetGroups)-1)]
+			}
 
 			// Create profile for the user
 			_, err = tx.Exec(`
 				INSERT INTO profiles (
-					user_id, name, bio, interests, location,
-					looking_for, age, occupation, profile_picture_url
+					user_id, organization_name, mission_statement,
+					state, city, zip_code, sectors, target_groups,
+					website_url, contact_email
 				)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			`,
 				userID,
-				firstName+" "+lastName,
-				bios[rand.Intn(len(bios))],
-				interestsArray,
-				locations[rand.Intn(len(locations))],
-				lookingFor[rand.Intn(len(lookingFor))],
-				rand.Intn(42)+18, // Age between 18 and 60
-				occupations[rand.Intn(len(occupations))],
-				"/placeholder.svg", // No profile picture for test users
+				organizationName,
+				gofakeit.Sentence(10),
+				states[gofakeit.Number(0, len(states)-1)],
+				gofakeit.City(),
+				gofakeit.Zip(),
+				pq.Array(selectedSectors),
+				pq.Array(selectedTargetGroups),
+				fmt.Sprintf("https://www.%s.org", gofakeit.DomainName()),
+				email,
 			)
 			if err != nil {
-				//log.printf("Error creating test profile: %v", err)
+				continue
+			}
+
+			// Create provider or recipient specific data
+			if role == "provider" {
+				_, err = tx.Exec(`
+					INSERT INTO provider_data (
+						user_id, funding_type, amount_offered,
+						region_scope, location_notes, eligibility_notes,
+						deadline, application_link
+					)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				`,
+					userID,
+					gofakeit.Word(),
+					gofakeit.Price(10000, 1000000),
+					gofakeit.State(),
+					gofakeit.Sentence(5),
+					gofakeit.Sentence(5),
+					gofakeit.DateRange(time.Now(), time.Now().AddDate(0, 3, 0)),
+					fmt.Sprintf("https://www.%s.org/apply", gofakeit.DomainName()),
+				)
+			} else {
+				_, err = tx.Exec(`
+					INSERT INTO recipient_data (
+						user_id, needs, budget_requested,
+						team_size, timeline, prior_funding
+					)
+					VALUES ($1, $2, $3, $4, $5, $6)
+				`,
+					userID,
+					pq.Array(selectedTargetGroups), // Using target groups as needs
+					gofakeit.Price(5000, 500000),
+					gofakeit.Number(1, 100),
+					gofakeit.Word(),
+					gofakeit.Bool(),
+				)
+			}
+			if err != nil {
 				continue
 			}
 

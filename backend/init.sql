@@ -1,100 +1,193 @@
+-- Users table - core user information
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('provider', 'recipient')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Profiles table - organization/recipient information
 CREATE TABLE IF NOT EXISTS profiles (
-    user_id INTEGER PRIMARY KEY REFERENCES users(id),
-    name VARCHAR(255) NOT NULL,
-    bio TEXT,
-    interests TEXT[] DEFAULT '{}',
-    location VARCHAR(255),
-    looking_for TEXT,
-    age INTEGER,
-    occupation VARCHAR(255),
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_name VARCHAR(255) NOT NULL,
     profile_picture_url TEXT,
+    mission_statement TEXT,
+    state VARCHAR(100),
+    city VARCHAR(100),
+    zip_code VARCHAR(20),
+    ein VARCHAR(20),
+    language VARCHAR(50),
+    applicant_type VARCHAR(50),
+    sectors TEXT[] DEFAULT '{}',
+    target_groups TEXT[] DEFAULT '{}',
+    project_stage VARCHAR(50),
+    website_url TEXT,
+    contact_email VARCHAR(255),
+    chat_opt_in BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Provider data table - specific to grant providers
+CREATE TABLE IF NOT EXISTS provider_data (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    funding_type VARCHAR(50),
+    amount_offered DECIMAL(12,2),
+    region_scope VARCHAR(100),
+    location_notes TEXT,
+    eligibility_notes TEXT,
+    deadline TIMESTAMP WITH TIME ZONE,
+    application_link TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Recipient data table - specific to grant recipients
+CREATE TABLE IF NOT EXISTS recipient_data (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    needs TEXT[] DEFAULT '{}',
+    budget_requested DECIMAL(12,2),
+    team_size INTEGER,
+    timeline VARCHAR(50),
+    prior_funding BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Connections table - following relationships
+CREATE TABLE IF NOT EXISTS connections (
+    id SERIAL PRIMARY KEY,
+    initiator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(initiator_id, target_id)
+);
+
+-- Grants table - funding opportunities
+CREATE TABLE IF NOT EXISTS grants (
+    id SERIAL PRIMARY KEY,
+    provider_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    amount DECIMAL(12,2),
+    deadline TIMESTAMP WITH TIME ZONE,
+    requirements TEXT[] DEFAULT '{}',
+    sectors TEXT[] DEFAULT '{}',
+    target_groups TEXT[] DEFAULT '{}',
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'closed', 'draft')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS matches (
+-- Applications table - grant applications
+CREATE TABLE IF NOT EXISTS applications (
     id SERIAL PRIMARY KEY,
-    user_id_1 INTEGER REFERENCES users(id),
-    user_id_2 INTEGER REFERENCES users(id),
-    status VARCHAR(50) DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    grant_id INTEGER NOT NULL REFERENCES grants(id) ON DELETE CASCADE,
+    applicant_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id_1, user_id_2)
+    UNIQUE(grant_id, applicant_id)
 );
 
-CREATE TABLE IF NOT EXISTS match_preferences (
-    user_id INT PRIMARY KEY REFERENCES users(id),
-    priority TEXT CHECK (priority IN ('looking_for', 'interests', 'age', 'none')) DEFAULT 'none'
-);
-
-
+-- Messages table - communication between providers and recipients
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
-    match_id INTEGER REFERENCES matches(id),
-    sender_id INTEGER REFERENCES users(id),
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    read_at TIMESTAMP WITH TIME ZONE
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id VARCHAR(255) PRIMARY KEY,
-    match_id INTEGER REFERENCES matches(id),
-    sender_id INTEGER REFERENCES users(id),
-    content TEXT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    read BOOLEAN DEFAULT false
-);
-
-CREATE TABLE IF NOT EXISTS tokens (
+-- Notifications table - system notifications
+CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    token VARCHAR(500) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS user_status (
-    user_id INTEGER PRIMARY KEY REFERENCES users(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'offline',
-    last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT valid_status CHECK (status IN ('online', 'offline'))
+-- Chat messages table - real-time communication between connected users
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    match_id INTEGER NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    read BOOLEAN DEFAULT false,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add necessary indexes
+-- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_matches_users ON matches(user_id_1, user_id_2);
-CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id);
+CREATE INDEX IF NOT EXISTS idx_provider_data_user_id ON provider_data(user_id);
+CREATE INDEX IF NOT EXISTS idx_recipient_data_user_id ON recipient_data(user_id);
+CREATE INDEX IF NOT EXISTS idx_connections_initiator ON connections(initiator_id);
+CREATE INDEX IF NOT EXISTS idx_connections_target ON connections(target_id);
+CREATE INDEX IF NOT EXISTS idx_grants_provider ON grants(provider_id);
+CREATE INDEX IF NOT EXISTS idx_applications_grant ON applications(grant_id);
+CREATE INDEX IF NOT EXISTS idx_applications_applicant ON applications(applicant_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_match ON chat_messages(match_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_id);
-CREATE INDEX IF NOT EXISTS idx_tokens_user ON tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_tokens_token ON tokens(token);
-CREATE INDEX IF NOT EXISTS idx_user_status_user ON user_status(user_id);
-ALTER TABLE user_status
-ADD COLUMN last_match_check TIMESTAMP DEFAULT NULL,
-ADD COLUMN last_message_check TIMESTAMP DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
 
+-- Create GIN indexes for array columns
+CREATE INDEX IF NOT EXISTS idx_profiles_sectors ON profiles USING GIN(sectors);
+CREATE INDEX IF NOT EXISTS idx_profiles_target_groups ON profiles USING GIN(target_groups);
+CREATE INDEX IF NOT EXISTS idx_recipient_data_needs ON recipient_data USING GIN(needs);
+CREATE INDEX IF NOT EXISTS idx_grants_sectors ON grants USING GIN(sectors);
+CREATE INDEX IF NOT EXISTS idx_grants_target_groups ON grants USING GIN(target_groups);
+CREATE INDEX IF NOT EXISTS idx_grants_requirements ON grants USING GIN(requirements);
 
--- Add trigger to auto-insert user_status entry when a new user is created
-CREATE OR REPLACE FUNCTION create_user_status_trigger()
+-- Add trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO user_status (user_id, status, last_active)
-    VALUES (NEW.id, 'offline', CURRENT_TIMESTAMP)
-    ON CONFLICT DO NOTHING;
+    NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER user_status_trigger
-AFTER INSERT ON users
-FOR EACH ROW
-EXECUTE FUNCTION create_user_status_trigger();
+-- Apply the trigger to relevant tables
+CREATE TRIGGER update_profiles_updated_at
+    BEFORE UPDATE ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_provider_data_updated_at
+    BEFORE UPDATE ON provider_data
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_recipient_data_updated_at
+    BEFORE UPDATE ON recipient_data
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_connections_updated_at
+    BEFORE UPDATE ON connections
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_grants_updated_at
+    BEFORE UPDATE ON grants
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_applications_updated_at
+    BEFORE UPDATE ON applications
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
