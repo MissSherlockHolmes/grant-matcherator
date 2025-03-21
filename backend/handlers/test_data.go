@@ -34,6 +34,51 @@ var states = []string{
 	"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 }
 
+var fundingTypes = []string{
+	"accelerator",
+	"angel investors",
+	"fellowship",
+	"free consulting",
+	"funding",
+	"funding resources",
+	"grant",
+	"incubator",
+	"loan",
+	"loans",
+	"pitch",
+	"pitch comp",
+	"resources",
+	"startup program",
+}
+
+var languages = []string{
+	"English", "Spanish",
+}
+
+var applicantTypes = []string{
+	"Non-profit", "For-profit", "Government", "Educational Institution",
+	"Research Organization", "Community Group", "Individual", "Startup",
+	"Social Enterprise", "Cooperative", "Foundation", "Association",
+}
+
+var projectStages = []string{
+	"Idea Stage", "Pre-seed", "Seed", "Early Stage",
+	"Growth Stage", "Scale-up", "Mature", "Expansion",
+	"Pilot", "MVP", "Product Development", "Market Testing",
+}
+
+var needs = []string{
+	"Capital", "Mentorship", "Technical Support", "Marketing",
+	"Legal Services", "HR Support", "Infrastructure", "Training",
+	"Equipment", "Research", "Development", "Partnerships",
+	"Market Access", "Regulatory Compliance", "Branding",
+}
+
+var timelines = []string{
+	"1-3 months", "3-6 months", "6-12 months", "1-2 years",
+	"2-5 years", "5+ years", "Ongoing", "Flexible",
+}
+
 func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -102,22 +147,30 @@ func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
 			// Create profile for the user
 			_, err = tx.Exec(`
 				INSERT INTO profiles (
-					user_id, organization_name, mission_statement,
-					state, city, zip_code, sectors, target_groups,
-					website_url, contact_email
+					user_id, organization_name, profile_picture_url,
+					mission_statement, state, city, zip_code,
+					ein, language, applicant_type,
+					sectors, target_groups, project_stage,
+					website_url, contact_email, chat_opt_in
 				)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 			`,
 				userID,
 				organizationName,
+				fmt.Sprintf("https://www.%s.org/profile.jpg", gofakeit.DomainName()),
 				gofakeit.Sentence(10),
 				states[gofakeit.Number(0, len(states)-1)],
 				gofakeit.City(),
 				gofakeit.Zip(),
+				fmt.Sprintf("%d-%d", gofakeit.Number(10, 99), gofakeit.Number(1000, 9999)),
+				languages[gofakeit.Number(0, len(languages)-1)],
+				applicantTypes[gofakeit.Number(0, len(applicantTypes)-1)],
 				pq.Array(selectedSectors),
 				pq.Array(selectedTargetGroups),
+				projectStages[gofakeit.Number(0, len(projectStages)-1)],
 				fmt.Sprintf("https://www.%s.org", gofakeit.DomainName()),
 				email,
+				gofakeit.Bool(),
 			)
 			if err != nil {
 				continue
@@ -134,15 +187,22 @@ func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				`,
 					userID,
-					gofakeit.Word(),
+					fundingTypes[gofakeit.Number(0, len(fundingTypes)-1)],
 					gofakeit.Price(10000, 1000000),
-					gofakeit.State(),
+					states[gofakeit.Number(0, len(states)-1)],
 					gofakeit.Sentence(5),
 					gofakeit.Sentence(5),
 					gofakeit.DateRange(time.Now(), time.Now().AddDate(0, 3, 0)),
 					fmt.Sprintf("https://www.%s.org/apply", gofakeit.DomainName()),
 				)
 			} else {
+				// Generate random needs
+				numNeeds := gofakeit.Number(1, 3)
+				selectedNeeds := make([]string, numNeeds)
+				for j := 0; j < numNeeds; j++ {
+					selectedNeeds[j] = needs[gofakeit.Number(0, len(needs)-1)]
+				}
+
 				_, err = tx.Exec(`
 					INSERT INTO recipient_data (
 						user_id, needs, budget_requested,
@@ -151,10 +211,10 @@ func GenerateTestDataHandler(db *sql.DB) http.HandlerFunc {
 					VALUES ($1, $2, $3, $4, $5, $6)
 				`,
 					userID,
-					pq.Array(selectedTargetGroups), // Using target groups as needs
+					pq.Array(selectedNeeds),
 					gofakeit.Price(5000, 500000),
 					gofakeit.Number(1, 100),
-					gofakeit.Word(),
+					timelines[gofakeit.Number(0, len(timelines)-1)],
 					gofakeit.Bool(),
 				)
 			}
