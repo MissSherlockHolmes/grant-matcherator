@@ -134,11 +134,12 @@ func UpdateProfileHandler(db *sql.DB) http.HandlerFunc {
 
 		// Update profile
 		_, err = tx.Exec(`
-			UPDATE matching_profiles
+			UPDATE profiles
 			SET mission_statement = $1,
 				sectors = $2,
 				target_groups = $3,
-				project_stage = $4
+				project_stage = $4,
+				updated_at = CURRENT_TIMESTAMP
 			WHERE user_id = $5
 		`, profile.MissionStatement, pq.Array(profile.Sectors), pq.Array(profile.TargetGroups), profile.ProjectStage, userID)
 

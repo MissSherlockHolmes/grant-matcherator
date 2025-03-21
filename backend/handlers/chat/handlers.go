@@ -17,7 +17,7 @@ import (
 )
 
 type ChatMessage struct {
-	ID        string    `json:"id"`
+	ID        int       `json:"id"`
 	MatchID   int       `json:"match_id"`
 	SenderID  int       `json:"sender_id"`
 	Content   string    `json:"content"`

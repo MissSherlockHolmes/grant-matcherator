@@ -6,7 +6,7 @@ const (
 	SelectUserQuery = `
 		SELECT u.role, u.id, u.email, 
 			p.organization_name, 
-			p.website,
+			p.website_url,
 			p.contact_email,
 			p.state,
 			p.city,
@@ -19,7 +19,7 @@ const (
 			p.project_stage,
 			p.profile_picture_url
 		FROM users u
-		LEFT JOIN matching_profiles p ON u.id = p.user_id
+		LEFT JOIN profiles p ON u.id = p.user_id
 		WHERE u.id = $1
 	`
 
@@ -27,7 +27,7 @@ const (
 	SelectRecipientQuery = `
 		SELECT needs, budget_requested,
 			team_size, timeline, prior_funding
-		FROM recipient_profiles
+		FROM recipient_data
 		WHERE user_id = $1
 	`
 
@@ -36,7 +36,7 @@ const (
 		SELECT funding_type, amount_offered, region_scope,
 			location_notes, eligibility_notes, deadline,
 			application_link
-		FROM provider_profiles
+		FROM provider_data
 		WHERE user_id = $1
 	`
 )

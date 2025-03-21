@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS connections (
     id SERIAL PRIMARY KEY,
     initiator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     target_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    connection_type VARCHAR(20) NOT NULL CHECK (connection_type IN ('following', 'follower')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(initiator_id, target_id)

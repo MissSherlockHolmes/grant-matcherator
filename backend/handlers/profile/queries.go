@@ -17,7 +17,7 @@ const (
 			array_to_json(p.sectors)::text, 
 			array_to_json(p.target_groups)::text, 
 			p.project_stage
-		FROM matching_profiles p
+		FROM profiles p
 		WHERE p.user_id = $1
 	`
 
