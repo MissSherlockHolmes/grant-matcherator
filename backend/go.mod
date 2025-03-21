@@ -15,4 +15,4 @@ require (
 
 require golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 
-require github.com/brianvoe/gofakeit/v6 v6.28.0 // indirect
+require github.com/brianvoe/gofakeit/v6 v6.28.0
