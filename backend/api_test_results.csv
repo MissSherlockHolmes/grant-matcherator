@@ -1,0 +1,46 @@
+Category,Endpoint,Method,Result
+Auth,/api/auth/signup,POST,Success
+Auth,/api/auth/login,POST,Success
+User Info (Provider),/api/me,GET,Success
+User Info (Provider),/api/me/profile,GET,Success
+User Info (Provider),/api/me/profile,PUT,Success
+User Info (Provider),/api/users/{recipient_id},GET,Success
+User Info (Provider),/api/users/{recipient_id}/full,GET,Success
+User Info (Provider),/api/users/{recipient_id}/profile,GET,Success
+User Info (Provider),/api/users/{recipient_id}/bio,GET,Success
+All Users,/api/users,GET,Success
+User Bio,/api/me/bio,GET,Success
+Matches,/api/potential-matches,GET,Success
+WebSocket (Info),/ws/chat/{CHAT_ID},GET,Success
+WebSocket (Info),/ws/notifications,GET,Success
+Connections,/api/connections/{id},DELETE,Success
+Connections,/api/connections,POST,Success
+Connections,/api/connections,GET,Success
+Notifications,/api/notifications,GET,Success
+Notifications,/api/notifications/read,POST,Success
+Chat,/api/chat/preferences,PUT (provider),Success
+Chat,/api/chat/preferences,PUT (recipient),Success
+Chat,/api/chat/preferences,GET (provider),Success
+Chat,/api/chat/preferences,GET (recipient),Success
+Chat,/api/chat,GET (provider),Success
+Chat,/api/chat,GET (recipient),Success
+Chat,/api/chat/{id}/messages,GET,Success
+Chat,/api/chat/{id}/messages/read,POST,Success
+Status,/api/status/1,GET,404 Not Found
+Status,/api/status,GET,Success
+Upload,/api/upload/profile-picture,POST (provider),Success
+Upload,/api/upload/profile-picture,DELETE (provider),Success
+User Info (Recipient),/api/me,GET,Success
+User Info (Recipient),/api/me/profile,GET,Success
+User Info (Recipient),/api/me/profile,PUT,Success
+User Info (Recipient),/api/users/{provider_id},GET,401 Unauthorized
+User Info (Recipient),/api/users/{provider_id}/full,GET,401 Unauthorized
+User Info (Recipient),/api/users/{provider_id}/profile,GET,Success
+User Info (Recipient),/api/users/{provider_id}/bio,GET,Success
+Connections (Recipient),/api/connections,GET,Success
+Notifications (Recipient),/api/notifications,GET,Success
+Notifications (Recipient),/api/notifications/read,POST,Success
+Status (Recipient),/api/status/2,GET,404 Not Found
+Status (Recipient),/api/status,GET,Success
+Upload (Recipient),/api/upload/profile-picture,POST,Success
+Upload (Recipient),/api/upload/profile-picture,DELETE,Success
